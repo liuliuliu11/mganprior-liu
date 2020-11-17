@@ -23,9 +23,9 @@ def main(args):
     # to cuda
     generator.cuda()
     loss.cuda()
-    inversion = get_inversion(args.optimization, args)
+    inversion = get_inversion(args.optimization, args)  # SGD
     image_list = image_files(args.target_images)
-    frameSize = MODEL_POOL[args.gan_model]['resolution']
+    frameSize = MODEL_POOL[args.gan_model]['resolution']  # gan_model=pggan_celebahq
 
     for i, images in enumerate(split_to_batches(image_list, 1)):
         print('%d: Super-resolving %d images ' % (i + 1, 1), end='')

@@ -7,17 +7,17 @@ import torch.optim as optim
 
 def get_inversion(inversion_type, args):
     if inversion_type == 'SGD':
-        return GradientDescent(args.iterations, args.lr, optimizer=optim.SGD, args=args)
+        return GradientDescent(args.iterations, args.lr, optimizer=optim.SGD, args=args)  # iterations=2000 lr=1.0
     elif inversion_type == 'Adam':
         return GradientDescent(args.iterations, args.lr, optimizer=optim.Adam, args=args)
 
 
 class GradientDescent(object):
     def __init__(self, iterations, lr, optimizer, args):
-        self.iterations = iterations
-        self.lr = lr
-        self.optimizer = optimizer
-        self.init_type = args.init_type  # ['Zero', 'Normal']
+        self.iterations = iterations  # 2000
+        self.lr = lr  # 1.0
+        self.optimizer = optimizer  # SGD
+        self.init_type = args.init_type  # ['Zero', 'Normal']  # zero
 
     def invert(self, generator, gt_image, loss_function, batch_size=1, video=True, *init):
         input_size_list = generator.input_size()

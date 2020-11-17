@@ -60,7 +60,8 @@ def image_files(path):
     """
     return list of images in the path
     :param path: path to Data Folder, absolute path
-    :return: 1D list of image files absolute path
+    :return: 1D list of image files absolute path  ['/home/ant/mganprior/examples/superresolution/02110.png', '/home/ant/mganprior/examples/superresolution/02036.png']
+
     """
     abs_path = os.path.abspath(path)
     image_files = os.listdir(abs_path)
