@@ -31,7 +31,7 @@ PGGAN_LAYER_MAPPING = {  # The new PGGAN includes the intermediate output layer,
 }
 
 
-def get_derivable_generator(gan_model_name, generator_type, args):
+def get_derivable_generator(gan_model_name, generator_type, args):  # pggan_celebahq   PGGAN-Multi-Z
     if generator_type == 'PGGAN-z':  # Single latent code
         return PGGAN(gan_model_name)
     elif generator_type == 'StyleGAN-z':
@@ -40,8 +40,8 @@ def get_derivable_generator(gan_model_name, generator_type, args):
         return StyleGAN(gan_model_name, 'w')
     elif generator_type == 'StyleGAN-w+':
         return StyleGAN(gan_model_name, 'w+')
-    elif generator_type == 'PGGAN-Multi-Z':  # Multiple Latent Codes
-        return PGGAN_multi_z(gan_model_name, args.composing_layer, args.z_number, args)
+    elif generator_type == 'PGGAN-Multi-Z':  # go here
+        return PGGAN_multi_z(gan_model_name, args.composing_layer, args.z_number, args)   # pggan_celebahq, 6 , 30
     else:
         raise Exception('Please indicate valid `generator_type`')
 
