@@ -526,9 +526,9 @@ MODEL_POOL = {
         'resolution': 256,
         'fused_scale': 'auto',
     },
-
     # StyleGAN2 Official.
     'stylegan2_ffhq': {
+        # line532 and line533 are the loading path of  the trained model.line534 is tensorflow code
         'weight_path': os.path.join(MODEL_DIR, PTH_MODEL_DIR, 'stylegan2_ffhq1024_generator.pth'),
         'tf_weight_path': os.path.join(MODEL_DIR, TF_MODEL_DIR, 'stylegan2-ffhq-config-f.pkl'),
         'tf_code_path': os.path.join(BASE_DIR, 'stylegan2_tf_official'),
@@ -537,6 +537,27 @@ MODEL_POOL = {
         'z_space_dim': 512,
         'w_space_dim': 512,
         'resolution': 1024,
+        'g_architecture_type': 'skip',
+        'fused_modulate': True,
+    },
+
+    # BASE_DIR = os.path.dirname(os.path.relpath(__file__))  # BASE_DIR = models
+    # MODEL_DIR = os.path.join(BASE_DIR, 'pretrain')  # models/pretrain
+    # PTH_MODEL_DIR = 'pytorch'
+    # TF_MODEL_DIR = 'tensorflow'
+    # added by yangliu in line550-line561  especially in line550-line552
+    'stylegan2_ffhq256': {
+        'weight_path': '/home/ant/pixel2s2p-pretrained_models/090000.pt',
+        'tf_weight_path': '',
+        'tf_code_path': '',
+        # 'weight_path': os.path.join(MODEL_DIR, PTH_MODEL_DIR, 'stylegan_ffhq256_generator.pth'),
+        # 'tf_weight_path': os.path.join(MODEL_DIR, TF_MODEL_DIR, 'stylegan-ffhq-256x256-025000.pkl'),
+        # 'tf_code_path': os.path.join(BASE_DIR, 'stylegan_tf_official'),
+        'gan_type': 'stylegan2',
+        'dataset_name': 'ffhq',
+        'z_space_dim': 512,
+        'w_space_dim': 512,
+        'resolution': 256,
         'g_architecture_type': 'skip',
         'fused_modulate': True,
     },

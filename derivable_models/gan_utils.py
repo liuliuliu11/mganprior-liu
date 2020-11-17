@@ -25,7 +25,7 @@ def standard_z_sample(size, depth, device=None):
     return result
 
 
-def get_gan_model(model_name):
+def get_gan_model(model_name):  # model_name=stylegan2_ffhq256
     """
     :param model_name: Please refer `GAN_MODELS`
     :return: gan_model(nn.Module or nn.Sequential)

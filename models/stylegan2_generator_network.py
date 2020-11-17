@@ -38,6 +38,8 @@ class StyleGAN2GeneratorNet(nn.Module):
   NOTE: the generated images are with `RGB` color channels and range [-1, 1].
   """
 
+  #  256 512 512 3 skip True 0.5 18 False
+
   def __init__(self,
                resolution=1024,
                z_space_dim=512,
@@ -75,8 +77,7 @@ class StyleGAN2GeneratorNet(nn.Module):
       fmaps_max: Maximum number of feature maps in each layer. (default: 512)
 
     Raises:
-      ValueError: If the input `resolution` is not supported, or
-        `architecture_type` is not supported.
+      ValueError: If the input `resolution` is not supported, or `architecture_type` is not supported.
     """
     super().__init__()
 
@@ -87,21 +88,21 @@ class StyleGAN2GeneratorNet(nn.Module):
       raise ValueError(f'Invalid fused-scale option: {architecture_type}!\n'
                        f'Architectures allowed: {_ARCHITECTURES_ALLOWED}.')
 
-    self.init_res = _INIT_RES
-    self.resolution = resolution
-    self.z_space_dim = z_space_dim
-    self.w_space_dim = w_space_dim
-    self.image_channels = image_channels
-    self.architecture_type = architecture_type
-    self.fused_modulate = fused_modulate
-    self.truncation_psi = truncation_psi
-    self.truncation_layers = truncation_layers
-    self.randomize_noise = randomize_noise
-    self.num_mapping_layers = num_mapping_layers
-    self.fmaps_base = fmaps_base
-    self.fmaps_max = fmaps_max
+    self.init_res = _INIT_RES  # 4
+    self.resolution = resolution  # 256
+    self.z_space_dim = z_space_dim  # 512
+    self.w_space_dim = w_space_dim  # 512
+    self.image_channels = image_channels  # 3
+    self.architecture_type = architecture_type  # skip
+    self.fused_modulate = fused_modulate  # True
+    self.truncation_psi = truncation_psi  # 0.5
+    self.truncation_layers = truncation_layers  # 18
+    self.randomize_noise = randomize_noise  # False
+    self.num_mapping_layers = num_mapping_layers  # 8
+    self.fmaps_base = fmaps_base  # 32768
+    self.fmaps_max = fmaps_max  # 512
 
-    self.num_layers = int(np.log2(self.resolution // self.init_res * 2)) * 2
+    self.num_layers = int(np.log2(self.resolution // self.init_res * 2)) * 2  # 10
 
     self.mapping = MappingModule(input_space_dim=self.z_space_dim,
                                  hidden_space_dim=self.fmaps_max,
@@ -155,7 +156,7 @@ class MappingModule(nn.Sequential):
       sequence['normalize'] = PixelNormLayer(dim=1)
 
     self.pth_to_tf_var_mapping = {}
-    for i in range(num_layers):
+    for i in range(num_layers):  # 8
       in_dim = input_space_dim if i == 0 else hidden_space_dim
       out_dim = final_space_dim if i == (num_layers - 1) else hidden_space_dim
       sequence[f'dense{i}'] = DenseBlock(in_dim, out_dim)
@@ -231,22 +232,22 @@ class SynthesisModule(nn.Module):
                fmaps_max=512):
     super().__init__()
 
-    self.init_res = init_resolution
-    self.init_res_log2 = int(np.log2(self.init_res))
-    self.resolution = resolution
-    self.final_res_log2 = int(np.log2(self.resolution))
-    self.w_space_dim = w_space_dim
-    self.architecture_type = architecture_type
-    self.fmaps_base = fmaps_base
-    self.fmaps_max = fmaps_max
+    self.init_res = init_resolution  # 4
+    self.init_res_log2 = int(np.log2(self.init_res))  # 2
+    self.resolution = resolution  # 256
+    self.final_res_log2 = int(np.log2(self.resolution))  # 8
+    self.w_space_dim = w_space_dim  # 512
+    self.architecture_type = architecture_type  # skip
+    self.fmaps_base = fmaps_base  # 32768
+    self.fmaps_max = fmaps_max  # 512
 
-    self.num_layers = (self.final_res_log2 - self.init_res_log2 + 1) * 2
+    self.num_layers = (self.final_res_log2 - self.init_res_log2 + 1) * 2  # 14
 
     # pylint: disable=line-too-long
     self.pth_to_tf_var_mapping = {}
-    for res_log2 in range(self.init_res_log2, self.final_res_log2 + 1):
-      res = 2 ** res_log2
-      block_idx = res_log2 - self.init_res_log2
+    for res_log2 in range(self.init_res_log2, self.final_res_log2 + 1):  # (4, 9)
+      res = 2 ** res_log2  # 16, 32, 64, 128, 256
+      block_idx = res_log2 - self.init_res_log2  # 14, 30, 62, 126, 254
 
       # First convolution layer for each resolution.
       if res == self.init_res:
@@ -260,9 +261,9 @@ class SynthesisModule(nn.Module):
         self.add_module(
             f'layer{2 * block_idx - 1}',
             ModulateConvBlock(resolution=res,
-                              in_channels=self.get_nf(res // 2),
-                              out_channels=self.get_nf(res),
-                              w_space_dim=self.w_space_dim,
+                              in_channels=self.get_nf(res // 2),  # 8 16 32 64 128
+                              out_channels=self.get_nf(res),  # 16 32 64 128 256
+                              w_space_dim=self.w_space_dim,  # 512
                               scale_factor=2,
                               fused_modulate=fused_modulate,
                               demodulate=True,
@@ -405,7 +406,7 @@ class SynthesisModule(nn.Module):
 class PixelNormLayer(nn.Module):
   """Implements pixel-wise feature vector normalization layer."""
 
-  def __init__(self, dim, epsilon=1e-8):
+  def __init__(self, dim, epsilon=1e-8):  # dim=1 epsilon=1e-8
     super().__init__()
     self.dim = dim
     self.eps = epsilon

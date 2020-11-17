@@ -9,7 +9,7 @@ from .stylegan2_generator import StyleGAN2Generator
 __all__ = ['build_generator']
 
 
-def build_generator(model_name, logger=None):
+def build_generator(model_name, logger=None):  # model_name=stylegan2_ffhq256
   """Builds generator module by model name."""
   if not model_name in MODEL_POOL:
     raise ValueError(f'Model `{model_name}` is not registered in '

@@ -41,6 +41,7 @@ def get_temp_logger(logger_name='logger'):
 
   return logger
 
+# model_name = stylegan2_ffhq
 
 class BaseGenerator(object):
   """Base class for generator used in GAN variants."""
@@ -74,19 +75,19 @@ class BaseGenerator(object):
     # Parse settings.
     for key, val in model_settings.MODEL_POOL[model_name].items():
       setattr(self, key, val)
-    self.use_cuda = model_settings.USE_CUDA and torch.cuda.is_available()
-    self.batch_size = model_settings.MAX_IMAGES_ON_DEVICE
-    self.ram_size = model_settings.MAX_IMAGES_ON_RAM
+    self.use_cuda = model_settings.USE_CUDA and torch.cuda.is_available()  # TRUE
+    self.batch_size = model_settings.MAX_IMAGES_ON_DEVICE  # 4
+    self.ram_size = model_settings.MAX_IMAGES_ON_RAM  # 800
     self.net = None
-    self.run_device = 'cuda' if self.use_cuda else 'cpu'
+    self.run_device = 'cuda' if self.use_cuda else 'cpu'  # cuda
     self.cpu_device = 'cpu'
 
     # Check necessary settings.
     self.weight_path = getattr(self, 'weight_path', '')
     self.tf_weight_path = getattr(self, 'tf_weight_path', '')
-    self.check_attr('gan_type')
-    self.check_attr('z_space_dim')
-    self.check_attr('resolution')
+    self.check_attr('gan_type')  # stylegan2
+    self.check_attr('z_space_dim')  # 512
+    self.check_attr('resolution')  # 1024
     self.min_val = getattr(self, 'min_val', -1.0)
     self.max_val = getattr(self, 'max_val', 1.0)
     self.image_channels = getattr(self, 'image_channels', 3)

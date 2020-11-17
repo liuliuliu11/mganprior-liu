@@ -28,22 +28,22 @@ class StyleGAN2Generator(BaseGenerator):
         assert self.gan_type == 'stylegan2'
 
     def build(self):
-        self.check_attr('w_space_dim')
-        self.check_attr('g_architecture_type')
-        self.check_attr('fused_modulate')
-        self.truncation_psi = model_settings.STYLEGAN2_TRUNCATION_PSI
-        self.truncation_layers = model_settings.STYLEGAN2_TRUNCATION_LAYERS
-        self.randomize_noise = model_settings.STYLEGAN2_RANDOMIZE_NOISE
+        self.check_attr('w_space_dim')  # 512
+        self.check_attr('g_architecture_type')  # skip
+        self.check_attr('fused_modulate')  # True
+        self.truncation_psi = model_settings.STYLEGAN2_TRUNCATION_PSI  # 0.5
+        self.truncation_layers = model_settings.STYLEGAN2_TRUNCATION_LAYERS  # 18
+        self.randomize_noise = model_settings.STYLEGAN2_RANDOMIZE_NOISE  # False
         self.net = StyleGAN2GeneratorNet(
-            resolution=self.resolution,
-            z_space_dim=self.z_space_dim,
-            w_space_dim=self.w_space_dim,
-            image_channels=self.image_channels,
-            architecture_type=self.g_architecture_type,
-            fused_modulate=self.fused_modulate,
-            truncation_psi=self.truncation_psi,
-            truncation_layers=self.truncation_layers,
-            randomize_noise=self.randomize_noise)
+            resolution=self.resolution,  # 256
+            z_space_dim=self.z_space_dim,  # 512
+            w_space_dim=self.w_space_dim,  # 512
+            image_channels=self.image_channels,  # 3
+            architecture_type=self.g_architecture_type,  # skip
+            fused_modulate=self.fused_modulate,  # True
+            truncation_psi=self.truncation_psi,  # 0.5
+            truncation_layers=self.truncation_layers,  # 18
+            randomize_noise=self.randomize_noise)  # False
         self.num_layers = self.net.num_layers
         self.model_specific_vars = ['truncation.truncation']
 

@@ -31,7 +31,7 @@ PGGAN_LAYER_MAPPING = {  # The new PGGAN includes the intermediate output layer,
 }
 
 
-def get_derivable_generator(gan_model_name, generator_type, args):  # pggan_celebahq   PGGAN-Multi-Z
+def get_derivable_generator(gan_model_name, generator_type, args):  # pggan_celebahq/stylegan2_ffhq256   PGGAN-Multi-Z/StyleGAN-w+
     if generator_type == 'PGGAN-z':  # Single latent code
         return PGGAN(gan_model_name)
     elif generator_type == 'StyleGAN-z':
@@ -39,7 +39,7 @@ def get_derivable_generator(gan_model_name, generator_type, args):  # pggan_cele
     elif generator_type == 'StyleGAN-w':
         return StyleGAN(gan_model_name, 'w')
     elif generator_type == 'StyleGAN-w+':
-        return StyleGAN(gan_model_name, 'w+')
+        return StyleGAN(gan_model_name, 'w+')  # after modified go here.
     elif generator_type == 'PGGAN-Multi-Z':  # go here
         return PGGAN_multi_z(gan_model_name, args.composing_layer, args.z_number, args)   # pggan_celebahq, 6 , 30
     else:
@@ -47,7 +47,7 @@ def get_derivable_generator(gan_model_name, generator_type, args):  # pggan_cele
 
 
 class StyleGAN(nn.Module):
-    def __init__(self, gan_model_name, start):
+    def __init__(self, gan_model_name, start):  # stylegan2_ffhq256, w+
         super(StyleGAN, self).__init__()
         self.stylegan = get_gan_model(gan_model_name).net
         self.start = start
@@ -57,7 +57,7 @@ class StyleGAN(nn.Module):
         if self.start == 'z' or self.start == 'w':
             return [(512,)]
         elif self.start == 'w+':
-            return [(self.stylegan.synthesis.num_layers, 512)]
+            return [(self.stylegan.synthesis.num_layers, 512)]  # return  [(18,512)]
 
     def cuda(self, device=None):
         self.stylegan.cuda(device=device)

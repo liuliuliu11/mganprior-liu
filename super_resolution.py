@@ -17,7 +17,7 @@ warnings.filterwarnings("ignore")
 
 def main(args):
     os.makedirs(args.outputs, exist_ok=True)
-    generator = get_derivable_generator(args.gan_model, args.inversion_type, args)  # pggan_celebahq   PGGAN-Multi-Z
+    generator = get_derivable_generator(args.gan_model, args.inversion_type, args)  # pggan_celebahq/stylegan2_ffhq256    PGGAN-Multi-Z/StyleGAN-w+
     loss = get_loss(args.loss_type, args)
     sr_loss = SR_loss(loss, args.down, args.factor)
     # to cuda
@@ -71,7 +71,8 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--target_images', default='./examples/superresolution', help='Directory with images for SR')
     parser.add_argument('-o', '--outputs', default='sr_test', help='Directory for storing generated images')
     # Parameters for Multi-Code GAN Inversion
-    parser.add_argument('--inversion_type', default='PGGAN-Multi-Z', help='Inversion type, PGGAN-Multi-Z for Multi-Code-GAN prior.')
+    # parser.add_argument('--inversion_type', default='PGGAN-Multi-Z', help='Inversion type, PGGAN-Multi-Z for Multi-Code-GAN prior.')
+    parser.add_argument('--inversion_type', default='StyleGAN-w+', help='Inversion type, PGGAN-Multi-Z for Multi-Code-GAN prior.')
     parser.add_argument('--composing_layer', default=6, help='Composing layer in multi-code gan inversion methods.', type=int)
     parser.add_argument('--z_number', default=30, help='Number of the latent codes.', type=int)
     # Experiment Settings
@@ -92,8 +93,8 @@ if __name__ == '__main__':
     parser.add_argument('--lr', default=1.0, help='Learning rate.', type=float)
     parser.add_argument('--iterations', default=2000, help='Number of optimization steps.', type=int)
     # Generator Setting
-    parser.add_argument('--gan_model', default='pggan_celebahq', help='The name of model used.', type=str)
-
+    # parser.add_argument('--gan_model', default='pggan_celebahq', help='The name of model used.', type=str)
+    parser.add_argument('--gan_model', default='stylegan2_ffhq256', help='The name of model used.', type=str)
     # Video Settings
     parser.add_argument('--video', type=bool, default=True, help='Save video. False for no video.')
     parser.add_argument('--fps', type=int, default=24, help='Frame rate of the created video.')
