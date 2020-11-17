@@ -22,10 +22,10 @@ class GradientDescent(object):
     def invert(self, generator, gt_image, loss_function, batch_size=1, video=True, *init):
         input_size_list = generator.input_size()
         if len(init) == 0:  #  go go go here !!!!!!
-            if generator.init is False:
+            if generator.init is False:   # go here !!
                 latent_estimate = []
                 for input_size in input_size_list:
-                    if self.init_type == 'Zero':
+                    if self.init_type == 'Zero':  # go here!
                         latent_estimate.append(torch.zeros((batch_size,) + input_size).cuda())
                     elif self.init_type == 'Normal':
                         latent_estimate.append(torch.randn((batch_size,) + input_size).cuda())

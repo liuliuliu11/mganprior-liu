@@ -1,1 +1,0 @@
-'SR_face' directory is created by running program 'super-resolution.py'.
