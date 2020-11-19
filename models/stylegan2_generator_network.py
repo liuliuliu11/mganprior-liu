@@ -104,23 +104,17 @@ class StyleGAN2GeneratorNet(nn.Module):
 
     self.num_layers = int(np.log2(self.resolution // self.init_res * 2)) * 2  # 10
 
-    self.mapping = MappingModule(input_space_dim=self.z_space_dim,
-                                 hidden_space_dim=self.fmaps_max,
-                                 final_space_dim=self.w_space_dim,
-                                 num_layers=self.num_mapping_layers)
-    self.truncation = TruncationModule(num_layers=self.num_layers,
-                                       w_space_dim=self.w_space_dim,
-                                       truncation_psi=self.truncation_psi,
-                                       truncation_layers=self.truncation_layers)
-    self.synthesis = SynthesisModule(init_resolution=self.init_res,
-                                     resolution=self.resolution,
-                                     w_space_dim=self.w_space_dim,
-                                     image_channels=self.image_channels,
-                                     architecture_type=self.architecture_type,
-                                     fused_modulate=self.fused_modulate,
-                                     randomize_noise=self.randomize_noise,
-                                     fmaps_base=self.fmaps_base,
-                                     fmaps_max=self.fmaps_max)
+    self.mapping = MappingModule(input_space_dim=self.z_space_dim, hidden_space_dim=self.fmaps_max, final_space_dim=self.w_space_dim, num_layers=self.num_mapping_layers)
+    self.truncation = TruncationModule(num_layers=self.num_layers, w_space_dim=self.w_space_dim, truncation_psi=self.truncation_psi, truncation_layers=self.truncation_layers)
+    self.synthesis = SynthesisModule(init_resolution=self.init_res,  # 4
+                                     resolution=self.resolution,  # 256
+                                     w_space_dim=self.w_space_dim,  # 512
+                                     image_channels=self.image_channels,  # 3
+                                     architecture_type=self.architecture_type,  #skip
+                                     fused_modulate=self.fused_modulate,  # True
+                                     randomize_noise=self.randomize_noise,  # False
+                                     fmaps_base=self.fmaps_base,  # 32768
+                                     fmaps_max=self.fmaps_max)  # 512
 
     self.pth_to_tf_var_mapping = {}
     for key, val in self.mapping.pth_to_tf_var_mapping.items():
@@ -143,22 +137,17 @@ class MappingModule(nn.Sequential):
   Basically, this module executes several dense layers in sequence.
   """
 
-  def __init__(self,
-               input_space_dim=512,
-               hidden_space_dim=512,
-               final_space_dim=512,
-               num_layers=8,
-               normalize_input=True):
+  def __init__(self, input_space_dim=512, hidden_space_dim=512, final_space_dim=512, num_layers=8, normalize_input=True):
     self.input_space_dim = input_space_dim
     sequence = OrderedDict()
 
-    if normalize_input:
+    if normalize_input:  # True
       sequence['normalize'] = PixelNormLayer(dim=1)
 
     self.pth_to_tf_var_mapping = {}
     for i in range(num_layers):  # 8
-      in_dim = input_space_dim if i == 0 else hidden_space_dim
-      out_dim = final_space_dim if i == (num_layers - 1) else hidden_space_dim
+      in_dim = input_space_dim if i == 0 else hidden_space_dim  # 512
+      out_dim = final_space_dim if i == (num_layers - 1) else hidden_space_dim  # 512
       sequence[f'dense{i}'] = DenseBlock(in_dim, out_dim)
       self.pth_to_tf_var_mapping[f'dense{i}.fc.weight'] = f'Dense{i}/weight'
       self.pth_to_tf_var_mapping[f'dense{i}.bias'] = f'Dense{i}/bias'
@@ -178,14 +167,14 @@ class TruncationModule(nn.Module):
   """Implements the truncation module."""
 
   def __init__(self,
-               num_layers,
-               w_space_dim=512,
-               truncation_psi=0.7,
-               truncation_layers=8):
+               num_layers,  # 10
+               w_space_dim=512,  # 512
+               truncation_psi=0.7,  # 0.5
+               truncation_layers=8):  # 18
     super().__init__()
 
-    self.num_layers = num_layers
-    self.w_space_dim = w_space_dim
+    self.num_layers = num_layers  # 10
+    self.w_space_dim = w_space_dim  # 512
     if truncation_psi is not None and truncation_layers is not None:
       self.use_truncation = True
     else:
@@ -196,8 +185,9 @@ class TruncationModule(nn.Module):
     self.register_buffer('w_avg', torch.zeros(w_space_dim))
     self.pth_to_tf_var_mapping = {'w_avg': 'dlatent_avg'}
 
-    layer_idx = np.arange(self.num_layers).reshape(1, self.num_layers, 1)
-    coefs = np.ones_like(layer_idx, dtype=np.float32)
+    layer_idx = np.arange(self.num_layers).reshape(1, self.num_layers, 1)  # np.arange(10).reshape(1,10,1)  array([[[0],[1],[2],[3],[4],[5],[6],[7],[8],[9]]])
+    coefs = np.ones_like(layer_idx, dtype=np.float32)  # array([[[1.],[1.],[1.],[1.],[1.],[1.],[1.],[1.],[1.],[1.]]], dtype=float32)
+
     coefs[layer_idx < truncation_layers] *= truncation_psi
     self.register_buffer('truncation', torch.from_numpy(coefs))
 
@@ -245,21 +235,21 @@ class SynthesisModule(nn.Module):
 
     # pylint: disable=line-too-long
     self.pth_to_tf_var_mapping = {}
-    for res_log2 in range(self.init_res_log2, self.final_res_log2 + 1):  # (4, 9)
-      res = 2 ** res_log2  # 16, 32, 64, 128, 256
-      block_idx = res_log2 - self.init_res_log2  # 14, 30, 62, 126, 254
+    for res_log2 in range(self.init_res_log2, self.final_res_log2 + 1):  # (2, 9)  total:7  detail:2,3,4,5,6,7,8
+      res = 2 ** res_log2  # 4, 8, 16, 32, 64, 128, 256
+      block_idx = res_log2 - self.init_res_log2  # 0, 1, 2, 3, 4, 5, 6
 
       # First convolution layer for each resolution.
-      if res == self.init_res:
+      if res == self.init_res:  # first go here
         self.add_module(
             f'early_layer',
             InputBlock(init_resolution=self.init_res,
                        channels=self.get_nf(res)))
         self.pth_to_tf_var_mapping[f'early_layer.const'] = (
             f'{res}x{res}/Const/const')
-      else:
+      else:  # other conclusion go here.
         self.add_module(
-            f'layer{2 * block_idx - 1}',
+            f'layer{2 * block_idx - 1}',  # -1 1 3 5 7 9 11  (here no exist -1 because go if res==init_res)
             ModulateConvBlock(resolution=res,
                               in_channels=self.get_nf(res // 2),  # 8 16 32 64 128
                               out_channels=self.get_nf(res),  # 16 32 64 128 256
@@ -269,18 +259,12 @@ class SynthesisModule(nn.Module):
                               demodulate=True,
                               add_noise=True,
                               randomize_noise=randomize_noise))
-        self.pth_to_tf_var_mapping[f'layer{2 * block_idx - 1}.weight'] = (
-            f'{res}x{res}/Conv0_up/weight')
-        self.pth_to_tf_var_mapping[f'layer{2 * block_idx - 1}.bias'] = (
-            f'{res}x{res}/Conv0_up/bias')
-        self.pth_to_tf_var_mapping[f'layer{2 * block_idx - 1}.style.fc.weight'] = (
-            f'{res}x{res}/Conv0_up/mod_weight')
-        self.pth_to_tf_var_mapping[f'layer{2 * block_idx - 1}.style.bias'] = (
-            f'{res}x{res}/Conv0_up/mod_bias')
-        self.pth_to_tf_var_mapping[f'layer{2 * block_idx - 1}.noise_strength'] = (
-            f'{res}x{res}/Conv0_up/noise_strength')
-        self.pth_to_tf_var_mapping[f'layer{2 * block_idx - 1}.noise'] = (
-            f'noise{2 * block_idx - 1}')
+        self.pth_to_tf_var_mapping[f'layer{2 * block_idx - 1}.weight'] = (f'{res}x{res}/Conv0_up/weight')
+        self.pth_to_tf_var_mapping[f'layer{2 * block_idx - 1}.bias'] = (f'{res}x{res}/Conv0_up/bias')
+        self.pth_to_tf_var_mapping[f'layer{2 * block_idx - 1}.style.fc.weight'] = (f'{res}x{res}/Conv0_up/mod_weight')
+        self.pth_to_tf_var_mapping[f'layer{2 * block_idx - 1}.style.bias'] = (f'{res}x{res}/Conv0_up/mod_bias')
+        self.pth_to_tf_var_mapping[f'layer{2 * block_idx - 1}.noise_strength'] = (f'{res}x{res}/Conv0_up/noise_strength')
+        self.pth_to_tf_var_mapping[f'layer{2 * block_idx - 1}.noise'] = (f'noise{2 * block_idx - 1}')
 
         if self.architecture_type == 'resnet':
           self.add_module(
@@ -296,7 +280,7 @@ class SynthesisModule(nn.Module):
 
       # Second convolution layer for each resolution.
       self.add_module(
-          f'layer{2 * block_idx}',
+          f'layer{2 * block_idx}',  # 0, 2, 4, 6, 8, 10, 12
           ModulateConvBlock(resolution=res,
                             in_channels=self.get_nf(res),
                             out_channels=self.get_nf(res),
@@ -357,7 +341,7 @@ class SynthesisModule(nn.Module):
       self.upsample = UpsamplingLayer()
     # pylint: enable=line-too-long
 
-  def get_nf(self, res):
+  def get_nf(self, res):  # when res = 4, 8, 16, 32, 64, 128, 256  return  512 512 512 512 512 256 128
     """Gets number of feature maps according to current resolution."""
     return min(self.fmaps_base // res, self.fmaps_max)
 
@@ -404,7 +388,8 @@ class SynthesisModule(nn.Module):
 
 
 class PixelNormLayer(nn.Module):
-  """Implements pixel-wise feature vector normalization layer."""
+
+  # Implements pixel-wise feature vector normalization layer.
 
   def __init__(self, dim, epsilon=1e-8):  # dim=1 epsilon=1e-8
     super().__init__()
@@ -412,7 +397,7 @@ class PixelNormLayer(nn.Module):
     self.eps = epsilon
 
   def forward(self, x):
-    norm = torch.sqrt(torch.mean(x ** 2, dim=self.dim, keepdim=True) + self.eps)
+    norm = torch.sqrt(torch.mean(x ** 2, dim=self.dim, keepdim=True) + self.eps)  # batch channel height width
     return x / norm
 
 
@@ -429,7 +414,7 @@ class UpsamplingLayer(nn.Module):
                kernel_gain=None):
     super().__init__()
     assert scale_factor >= 1
-    self.scale_factor = scale_factor
+    self.scale_factor = scale_factor  # 2
 
     if extra_padding != 0:
       assert scale_factor == 1
@@ -437,7 +422,7 @@ class UpsamplingLayer(nn.Module):
     if kernel is None:
       kernel = np.ones((scale_factor), dtype=np.float32)
     else:
-      kernel = np.array(kernel, dtype=np.float32)
+      kernel = np.array(kernel, dtype=np.float32)  # array([1., 3., 3., 1.], dtype=float32)
     assert kernel.ndim == 1
     kernel = np.outer(kernel, kernel)
     kernel = kernel / np.sum(kernel)
@@ -487,7 +472,7 @@ class InputBlock(nn.Module):
   `(channels, init_resolution, init_resolution)`.
   """
 
-  def __init__(self, init_resolution, channels):
+  def __init__(self, init_resolution, channels):  # init_resolution=4 channels=512
     super().__init__()
     self.const = nn.Parameter(
         torch.randn(1, channels, init_resolution, init_resolution))
@@ -585,23 +570,8 @@ class ConvBlock(nn.Module):
 class ModulateConvBlock(nn.Module):
   """Implements the convolutional block with style modulation."""
 
-  def __init__(self,
-               resolution,
-               in_channels,
-               out_channels,
-               kernel_size=3,
-               scale_factor=1,
-               filtering_kernel=(1, 3, 3, 1),
-               w_space_dim=512,
-               fused_modulate=True,
-               demodulate=True,
-               weight_gain=1.0,
-               lr_multiplier=1.0,
-               add_bias=True,
-               activation_type='lrelu',
-               add_noise=True,
-               randomize_noise=True,
-               epsilon=1e-8):
+  def __init__(self, resolution, in_channels, out_channels, kernel_size=3, scale_factor=1, filtering_kernel=(1, 3, 3, 1), w_space_dim=512, fused_modulate=True, demodulate=True,
+               weight_gain=1.0, lr_multiplier=1.0, add_bias=True, activation_type='lrelu', add_noise=True, randomize_noise=True, epsilon=1e-8):
     """Initializes the class with block settings.
 
     NOTE: Wscale is used as default.
@@ -613,15 +583,13 @@ class ModulateConvBlock(nn.Module):
       kernel_size: Size of the convolutional kernel.
       scale_factor: Scale factor for upsampling. `1` means skip upsampling.
       filtering_kernel: Kernel used for filtering after upsampling.
-      w_space_dim: Dimension of disentangled latent space. This is used for
-        style modulation.
+      w_space_dim: Dimension of disentangled latent space. This is used for style modulation.
       fused_modulate: Whether to fuse `style_modulate` and `conv2d` together.
       demodulate: Whether to perform style demodulation.
       weight_gain: Gain factor for weight parameter in convolutional layer.
       lr_multiplier: Learning rate multiplier.
       add_bias: Whether to add bias after convolution.
-      activation_type: Type of activation function. Support `linear`, `relu`
-        and `lrelu`.
+      activation_type: Type of activation function. Support `linear`, `relu` and `lrelu`.
       add_noise: Whether to add noise to spatial feature map.
       randomize_noise: Whether to randomize new noises at runtime.
       epsilon: Small number to avoid `divide by zero`.
@@ -631,19 +599,18 @@ class ModulateConvBlock(nn.Module):
     """
     super().__init__()
 
-    self.res = resolution
-    self.in_c = in_channels
-    self.out_c = out_channels
-    self.ksize = kernel_size
-    self.eps = epsilon
+    self.res = resolution  # 4
+    self.in_c = in_channels  # 512
+    self.out_c = out_channels  # 512
+    self.ksize = kernel_size  # 3
+    self.eps = epsilon  # 1e-8
 
-    self.weight = nn.Parameter(
-        torch.randn(kernel_size, kernel_size, in_channels, out_channels))
-    fan_in = in_channels * kernel_size * kernel_size
-    self.weight_scale = weight_gain / np.sqrt(fan_in)
-    self.lr_multiplier = lr_multiplier
+    self.weight = nn.Parameter(torch.randn(kernel_size, kernel_size, in_channels, out_channels))  # 3 3 512 512       #====weight===============torch.randn
+    fan_in = in_channels * kernel_size * kernel_size  # fan_in=512*3*3=4608
+    self.weight_scale = weight_gain / np.sqrt(fan_in)  # 0.01473139
+    self.lr_multiplier = lr_multiplier  # 1.0
 
-    self.scale_factor = scale_factor
+    self.scale_factor = scale_factor  # 1
     if scale_factor > 1:
       self.filter = UpsamplingLayer(scale_factor=1,
                                     kernel=filtering_kernel,
@@ -651,21 +618,21 @@ class ModulateConvBlock(nn.Module):
                                     kernel_gain=scale_factor)
     else:
       assert kernel_size % 2 == 1
-      self.conv_padding = kernel_size // 2
+      self.conv_padding = kernel_size // 2  # 1
 
-    self.w_space_dim = w_space_dim
-    self.style = DenseBlock(in_channels=w_space_dim,
+    self.w_space_dim = w_space_dim  # 512
+    self.style = DenseBlock(in_channels=w_space_dim,                                                                  #===style==============DenseBlock
                             out_channels=in_channels,
                             lr_multiplier=1.0,
                             init_bias=1.0,
                             activation_type='linear')
 
-    self.fused_modulate = fused_modulate
-    self.demodulate = demodulate
+    self.fused_modulate = fused_modulate  # True
+    self.demodulate = demodulate  # True
 
-    self.add_bias = add_bias
+    self.add_bias = add_bias  # True
     if add_bias:
-      self.bias = nn.Parameter(torch.zeros(out_channels))
+      self.bias = nn.Parameter(torch.zeros(out_channels))                                                             #===bias================torch.zeros
 
     if activation_type == 'linear':
       self.activate = nn.Identity()
@@ -674,40 +641,37 @@ class ModulateConvBlock(nn.Module):
       self.activate = nn.ReLU(inplace=True)
       self.activate_scale = np.sqrt(2.0)
     elif activation_type == 'lrelu':
-      self.activate = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+      self.activate = nn.LeakyReLU(negative_slope=0.2, inplace=True)                                                  #===activate============nn.LeakyReLU
       self.activate_scale = np.sqrt(2.0)
     else:
       raise NotImplementedError(f'Not implemented activation function: '
                                 f'{activation_type}!')
 
-    self.add_noise = add_noise
-    self.randomize_noise = randomize_noise
-    if add_noise:
-      self.register_buffer('noise', torch.randn(1, 1, self.res, self.res))
+    self.add_noise = add_noise  # True
+    self.randomize_noise = randomize_noise  # False
+    if add_noise:  # go here
+      self.register_buffer('noise', torch.randn(1, 1, self.res, self.res))                                            #===noise===============torch.randn
       self.noise_strength = nn.Parameter(torch.zeros(()))
 
-  def forward(self, x, w):
-    assert (len(x.shape) == 4 and len(w.shape) == 2 and
-            w.shape[0] == x.shape[0] and w.shape[1] == self.w_space_dim)
+  def forward(self, x, w):  # x.size=(batch,channel,height,width)  w.size=(batch,512)
+    assert (len(x.shape) == 4 and len(w.shape) == 2 and w.shape[0] == x.shape[0] and w.shape[1] == self.w_space_dim)
     batch = x.shape[0]
 
-    weight = self.weight * self.weight_scale * self.lr_multiplier
+    weight = self.weight * self.weight_scale * self.lr_multiplier  # self.weight=torch.randn() self.weight_scale=0.01473139  lr=1.0
 
     # Style modulation.
-    style = self.style(w)
+    style = self.style(w)  # self.style=DenseBlock()
     _weight = weight.view(1, self.ksize, self.ksize, self.in_c, self.out_c)
     _weight = _weight * style.view(batch, 1, 1, self.in_c, 1)
 
     # Style demodulation.
-    if self.demodulate:
-      _weight_norm = torch.sqrt(
-          torch.sum(_weight ** 2, dim=[1, 2, 3]) + self.eps)
+    if self.demodulate:  # True
+      _weight_norm = torch.sqrt(torch.sum(_weight ** 2, dim=[1, 2, 3]) + self.eps)
       _weight = _weight / _weight_norm.view(batch, 1, 1, 1, self.out_c)
 
-    if self.fused_modulate:
+    if self.fused_modulate:  # True
       x = x.view(1, batch * self.in_c, x.shape[2], x.shape[3])
-      weight = _weight.permute(1, 2, 3, 0, 4).reshape(
-          self.ksize, self.ksize, self.in_c, batch * self.out_c)
+      weight = _weight.permute(1, 2, 3, 0, 4).reshape(self.ksize, self.ksize, self.in_c, batch * self.out_c)
     else:
       x = x * style.view(batch, self.in_c, 1, 1)
 
@@ -727,16 +691,15 @@ class ModulateConvBlock(nn.Module):
       x = self.filter(x)
     else:
       weight = weight.permute(3, 2, 0, 1)
-      x = F.conv2d(x, weight, stride=1, padding=self.conv_padding,
-                   groups=(batch if self.fused_modulate else 1))
-
-    if self.fused_modulate:
+      x = F.conv2d(x, weight, stride=1, padding=self.conv_padding, groups=(batch if self.fused_modulate else 1))
+        # w=torch.randn(16,3,5,5) b=torch.randn(16) x=torch.randn(1,3,28,28) out=F.conv2d(x,w,b,stride=2,padding=2)
+    if self.fused_modulate:  # True
       x = x.view(batch, self.out_c, self.res, self.res)
-    elif self.demodulate:
+    elif self.demodulate:  # True
       x = x / _weight_norm.view(batch, self.out_c, 1, 1)
 
     if self.add_noise:
-      if self.randomize_noise:
+      if self.randomize_noise:  # false
         noise = torch.randn(x.shape[0], 1, self.res, self.res).to(x)
       else:
         noise = self.noise
@@ -750,18 +713,19 @@ class ModulateConvBlock(nn.Module):
     return x
 
 
-class DenseBlock(nn.Module):
+class DenseBlock(nn.Module):  # 8 linear layers in mapping network
   """Implements the dense block."""
 
   def __init__(self,
-               in_channels,
-               out_channels,
+               in_channels,  # 512
+               out_channels,  # 512
                weight_gain=1.0,
                lr_multiplier=0.01,
                add_bias=True,
                init_bias=0,
                activation_type='lrelu'):
-    """Initializes the class with block settings.
+    """
+    Initializes the class with block settings.
 
     NOTE: Wscale is used as default.
 
@@ -772,8 +736,7 @@ class DenseBlock(nn.Module):
       lr_multiplier: Learning rate multiplier.
       add_bias: Whether to add bias after fully-connected operation.
       init_bias: Initialized bias.
-      activation_type: Type of activation function. Support `linear`, `relu`
-        and `lrelu`.
+      activation_type: Type of activation function. Support `linear`, `relu` and `lrelu`.
 
     Raises:
       NotImplementedError: If the input `activation_type` is not supported.
@@ -784,13 +747,13 @@ class DenseBlock(nn.Module):
                         out_features=out_channels,
                         bias=False)
 
-    self.add_bias = add_bias
+    self.add_bias = add_bias  # True
     if add_bias:
       self.bias = nn.Parameter(torch.zeros(out_channels))
-    self.init_bias = init_bias
+    self.init_bias = init_bias  # 0
 
-    self.weight_scale = weight_gain / np.sqrt(in_channels)
-    self.lr_multiplier = lr_multiplier
+    self.weight_scale = weight_gain / np.sqrt(in_channels)  # 1.0/np.sqrt(512)=0.0441941
+    self.lr_multiplier = lr_multiplier  # 0.01
 
     if activation_type == 'linear':
       self.activate = nn.Identity()
@@ -800,7 +763,7 @@ class DenseBlock(nn.Module):
       self.activate_scale = np.sqrt(2.0)
     elif activation_type == 'lrelu':
       self.activate = nn.LeakyReLU(negative_slope=0.2, inplace=True)
-      self.activate_scale = np.sqrt(2.0)
+      self.activate_scale = np.sqrt(2.0)  # 1.41421356
     else:
       raise NotImplementedError(f'Not implemented activation function: '
                                 f'{activation_type}!')
